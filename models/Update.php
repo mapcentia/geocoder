@@ -40,14 +40,32 @@ class Update extends Model
         ];
     }
 
-    public function update(string $table, int $gid, array $coords): array
+    public function update(string $table, int $gid, array $coords, string $address): array
     {
-        $sql = "UPDATE {$table} SET the_geom=st_geomfromtext('POINT({$coords[1]} {$coords[0]})', 4326) WHERE gid=:gid";
+        $sql = "UPDATE {$table} SET google_address='{$address}', the_geom=st_geomfromtext('POINT({$coords[1]} {$coords[0]})', 4326) WHERE gid=:gid";
 
         $res = $this->prepare($sql);
 
         try {
             $res->execute(["gid" => $gid]);
+        } catch (\PDOException $e) {
+            return [
+                "gid" => $gid,
+                "success" => false,
+                "message" => $e->getMessage()
+            ];
+        }
+        return [
+            "success" => true
+        ];
+    }
+
+    public function addGeomField(string $table) {
+        $sql= "ALTER TABLE ${table} ADD the_geom geometry('POINT', 4326)";
+        $res = $this->prepare($sql);
+
+        try {
+            $res->execute();
         } catch (\PDOException $e) {
             return [
                 "success" => false,

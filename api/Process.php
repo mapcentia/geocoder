@@ -38,6 +38,9 @@ class Process extends Controller
             $response['code'] = "400";
             return $response;
         }
+
+        $update->addGeomField($table);
+
         foreach ($rows["data"] as $row) {
             $address = $row["adresse"];
             $url = "https://maps.googleapis.com/maps/api/geocode/json?key={$key}&address={$address}";
@@ -54,10 +57,12 @@ class Process extends Controller
             $result["address"] = $address;
             $arr[] = $result;
             $geocodedGeom = $result["results"][0]["geometry"]["location"];
-            $updateRes = $update->update($table, $row["gid"], [$geocodedGeom["lat"], $geocodedGeom["lng"]]);
+            $formattedAddress = str_replace(", Denmark", "", $result["results"][0]["formatted_address"]);
+            $updateRes = $update->update($table, $row["gid"], [$geocodedGeom["lat"], $geocodedGeom["lng"]], $formattedAddress);
             if (!$updateRes["success"]) {
                 $response['success'] = false;
                 $response['message'] = $updateRes["message"];
+                $response['gid'] = $updateRes["gid"];
                 $response['code'] = "400";
                 return $response;
             }
