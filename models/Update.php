@@ -19,30 +19,33 @@ class Update extends Model
         parent::__construct();
     }
 
-    public function select(string $table): array
+    public function select(string $table, string $geomField, string $field, bool $force = false): array
     {
-        $sql = "SELECT * FROM {$table}";
-
+        $sql = "SELECT * FROM {$table} WHERE {$field} IS NOT NULL";
+        if (!$force) {
+            $sql .= " AND {$geomField} IS NULL";
+        }
+        $sql .= " LIMIT 1";
         $res = $this->prepare($sql);
-
         try {
             $res->execute();
-            $rows = $this->fetchAll($res);
         } catch (\PDOException $e) {
             return [
                 "success" => false,
                 "message" => $e->getMessage(),
-                ];
+            ];
         }
+        $rows = $this->fetchAll($res);
+
         return [
             "success" => true,
             "data" => $rows
         ];
     }
 
-    public function update(string $table, int $gid, array $coords, string $address): array
+    public function update(string $table, int $gid, array $coords, string $address, $geomField, $googleField): array
     {
-        $sql = "UPDATE {$table} SET google_address='{$address}', the_geom=st_geomfromtext('POINT({$coords[1]} {$coords[0]})', 4326) WHERE gid=:gid";
+        $sql = "UPDATE {$table} SET {$googleField}='{$address}', {$geomField}=st_geomfromtext('POINT({$coords[1]} {$coords[0]})', 4326) WHERE gid=:gid";
 
         $res = $this->prepare($sql);
 
@@ -50,20 +53,20 @@ class Update extends Model
             $res->execute(["gid" => $gid]);
         } catch (\PDOException $e) {
             return [
-                "gid" => $gid,
-                "success" => false,
-                "message" => $e->getMessage()
+                "google_address" => $address,
+                "success" => false
             ];
         }
         return [
+            "google_address" => $address,
             "success" => true
         ];
     }
 
-    public function addGeomField(string $table) {
-        $sql= "ALTER TABLE ${table} ADD the_geom geometry('POINT', 4326)";
+    public function addGeomField(string $table, string $field): array
+    {
+        $sql = "ALTER TABLE {$table} ADD {$field} geometry('POINT', 4326)";
         $res = $this->prepare($sql);
-
         try {
             $res->execute();
         } catch (\PDOException $e) {
@@ -73,7 +76,23 @@ class Update extends Model
             ];
         }
         return [
-            "success" => true
+            "success" => true,
+        ];
+    }
+    public function addGoogleField(string $table, string $field): array
+    {
+        $sql = "ALTER TABLE {$table} ADD {$field} varchar(255)";
+        $res = $this->prepare($sql);
+        try {
+            $res->execute();
+        } catch (\PDOException $e) {
+            return [
+                "success" => false,
+                "message" => $e->getMessage()
+            ];
+        }
+        return [
+            "success" => true,
         ];
     }
 }
