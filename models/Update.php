@@ -25,7 +25,7 @@ class Update extends Model
         if (!$force) {
             $sql .= " AND {$geomField} IS NULL";
         }
-        $sql .= " LIMIT 1";
+        $sql .= " LIMIT 10000";
         $res = $this->prepare($sql);
         try {
             $res->execute();
